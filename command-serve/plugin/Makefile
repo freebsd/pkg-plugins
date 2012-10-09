@@ -8,7 +8,8 @@ SHLIB_NAME?=	${PLUGIN_NAME}.so
 PLUGIN_NAME=	serve
 SRCS=		serve.c
 
-CFLAGS+=	-I${.CURDIR}/../../../libpkg \
+PKGFLAGS!=	pkgconf --cflags pkg
+CFLAGS+=	${PKGFLAGS} \
 		-I${.CURDIR}/../mongoose
 
 LDADD+=		-L${.OBJDIR}/../mongoose \

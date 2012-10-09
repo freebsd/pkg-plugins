@@ -8,7 +8,8 @@ SHLIB_NAME?=	${PLUGIN_NAME}.so
 PLUGIN_NAME=	mystats
 SRCS=		mystats.c
 
-CFLAGS+=	-I${.CURDIR}/../../libpkg
+PKGFLAGS!=	pkgconf --cflags pkg
+CFLAGS+=	${PKGFLAGS}
 
 beforeinstall:
 	${INSTALL} -d ${LIBDIR}

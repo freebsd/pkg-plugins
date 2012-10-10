@@ -40,91 +40,52 @@
 #include <pkg.h>
 
 #define PLUGIN_NAME "zfssnap"
-#define PLUGIN_CONF "/usr/local/etc/pkg/plugins/zfssnap.conf"
 
-static struct _zfssnap_config {
-        const char *key;
-        const char *val;
-} c[] = {
-        { "zfs_fs", NULL },
-	{ "zfs_prefix", NULL },
-        { "zfs_args", NULL },
-        { NULL, NULL }
+enum {
+	ZFS_FS=1,
+	ZFS_PREFIX,
+	ZFS_ARGS,
 };
 
-static int plugins_zfssnap_load_conf(const char *file);
-static const char *plugins_zfssnap_get_conf(const char *key);
+struct pkg_plugin *self;
+
 static int plugins_zfssnap_callback(void *data, struct pkgdb *db);
 
 static int plugins_zfssnap_fd = -1;
-static properties plugins_zfssnap_p = NULL;
 
 int
 init(struct pkg_plugin *p)
 {
+	self = p;
 	pkg_plugin_set(p, PKG_PLUGIN_NAME, PLUGIN_NAME);
 	pkg_plugin_set(p, PKG_PLUGIN_DESC, "ZFS snapshot plugin");
 	pkg_plugin_set(p, PKG_PLUGIN_VERSION, "1.0.0");
-	if (plugins_zfssnap_load_conf(PLUGIN_CONF) != EPKG_OK) {
-		fprintf(stderr, ">>> Cannot parse configuration file %s\n", PLUGIN_CONF);
-		return (EPKG_FATAL);
-	}
-	
+
+	pkg_plugin_conf_add_string(p, ZFS_FS, "ZFS_FS", NULL);
+	pkg_plugin_conf_add_string(p, ZFS_PREFIX, "ZFS_PREFIX", NULL);
+	pkg_plugin_conf_add_string(p, ZFS_ARGS, "ZFS_ARGS", NULL);
+
+	pkg_plugin_parse(p);
+
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_INSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
 		fprintf(stderr, ">>> Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
-	
+
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_DEINSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
 		fprintf(stderr, ">>> Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
-	
+
 	return (EPKG_OK);
 }
 
 int
 shutdown(struct pkg_plugin *p __unused)
 {
-	properties_free(plugins_zfssnap_p);
 	close(plugins_zfssnap_fd);
 	
 	return (EPKG_OK);
-}
-
-static int
-plugins_zfssnap_load_conf(const char *file)
-{
-        int i;
-	bool wrong_conf = false;
-
-	assert(file != NULL);
-
-	if ((plugins_zfssnap_fd = open(file, O_RDONLY)) < 0) {
-                fprintf(stderr, ">>> Cannot open configuration file %s", file);
-                return (EPKG_FATAL);
-        }
-
-	plugins_zfssnap_p = properties_read(plugins_zfssnap_fd);
-	
-        for (i = 0; c[i].key != NULL; i++)
-		c[i].val = property_find(plugins_zfssnap_p, c[i].key);
-
-	return (EPKG_OK);
-}
-
-static const char *
-plugins_zfssnap_get_conf(const char *key)
-{
-	unsigned int i;
-	
-	assert (key != NULL);
-
-        for (i = 0; c[i].key != NULL; i++)
-		if (strcmp(c[i].key, key) == 0)
-			return (c[i].val);
-
-	return (NULL);
 }
 
 static int
@@ -144,9 +105,9 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 	/* assert(db != NULL); */ 
 	/* assert(data != NULL); */
 
-	zfs_fs = plugins_zfssnap_get_conf("zfs_fs");
-	zfs_args = plugins_zfssnap_get_conf("zfs_args");
-	zfs_prefix = plugins_zfssnap_get_conf("zfs_prefix");
+	pkg_plugin_conf_string(self, ZFS_FS, &zfs_fs);
+	pkg_plugin_conf_string(self, ZFS_ARGS, &zfs_args);
+	pkg_plugin_conf_string(self, ZFS_PREFIX, &zfs_prefix);
 
 	if ((zfs_fs == NULL) || (zfs_prefix == NULL)) {
 		fprintf(stderr, ">>> Configuration options missing, plugin '%s' will not be loaded\n",

@@ -10,7 +10,8 @@ SRCS=		serve.c
 
 PKGFLAGS!=	pkgconf --cflags pkg
 CFLAGS+=	${PKGFLAGS} \
-		-I${.CURDIR}/../mongoose
+		-I${.CURDIR}/../mongoose \
+		-DPREFIX=\"${PREFIX}\"
 
 LDADD+=		-L${.OBJDIR}/../mongoose \
 		-lmongoose

@@ -35,17 +35,29 @@
 #include <mongoose.h>
 
 static void plugin_serve_usage(void);
+struct pkg_plugin *self;
 
 static char myname[] = "serve";
 static char version[] = "1.0.0";
 static char mydesc[] = "A http plugin for serving files";
 
+#define WWW_ROOT 1
+#define WWW_PORT 2
+
 int
 init(struct pkg_plugin *p)
 {
+	self = p;
+
 	pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
 	pkg_plugin_set(p, PKG_PLUGIN_DESC, mydesc);
 	pkg_plugin_set(p, PKG_PLUGIN_VERSION, version);
+
+	pkg_plugin_conf_add_string(p, WWW_ROOT, "WWW_ROOT", PREFIX"/www");
+	pkg_plugin_conf_add_string(p, WWW_PORT, "WWW_PORT", "8080");
+
+	pkg_plugin_parse(p);
+
 	return (EPKG_OK);
 }
 
@@ -91,7 +103,10 @@ plugin_serve_callback(int argc, char **argv)
 
 	/* default port to use is 8080 */
 	if (port == NULL)
-		port = "8080";
+		pkg_plugin_conf_string(self, WWW_PORT, &port);
+
+	if (wwwroot == NULL)
+		pkg_plugin_conf_string(self, WWW_ROOT, &wwwroot);
 
 	if (wwwroot == NULL) {
 		fprintf(stderr, ">>> You need to specify a directory for serving");

@@ -26,7 +26,10 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
+#include <sys/wait.h>
 
+#include <err.h>
+#include <errno.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <time.h>
@@ -36,15 +39,17 @@
 #include <string.h>
 #include <libutil.h>
 #include <unistd.h>
+#include <spawn.h>
 
 #include <pkg.h>
 
 #define PLUGIN_NAME "zfssnap"
+extern char **environ;
 
 enum {
 	ZFS_FS=1,
 	ZFS_PREFIX,
-	ZFS_ARGS,
+	ZFS_RECURSIVE,
 };
 
 struct pkg_plugin *self;
@@ -61,19 +66,19 @@ init(struct pkg_plugin *p)
 	pkg_plugin_set(p, PKG_PLUGIN_DESC, "ZFS snapshot plugin");
 	pkg_plugin_set(p, PKG_PLUGIN_VERSION, "1.0.0");
 
-	pkg_plugin_conf_add_string(p, ZFS_FS, "ZFS_FS", NULL);
-	pkg_plugin_conf_add_string(p, ZFS_PREFIX, "ZFS_PREFIX", NULL);
-	pkg_plugin_conf_add_string(p, ZFS_ARGS, "ZFS_ARGS", NULL);
+	pkg_plugin_conf_add_list(p, ZFS_FS, "ZFS_FS");
+	pkg_plugin_conf_add_string(p, ZFS_PREFIX, "ZFS_PREFIX", "pkgsnap");
+	pkg_plugin_conf_add_bool(p, ZFS_RECURSIVE, "ZFS_RECURSIVE", false);
 
 	pkg_plugin_parse(p);
 
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_INSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
-		fprintf(stderr, ">>> Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
+		warnx("Plugin '%s': failed to hook into the library", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
 
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_DEINSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
-		fprintf(stderr, ">>> Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
+		warnx("Plugin '%s': failed to hook into the library", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
 
@@ -91,12 +96,21 @@ shutdown(struct pkg_plugin *p __unused)
 static int
 plugins_zfssnap_callback(void *data, struct pkgdb *db)
 {
-	char cmd_buf[MAXPATHLEN + 1];
+	char snap[MAXPATHLEN];
 	struct tm *tm = NULL;
-	const char *zfs_fs = NULL;
-	const char *zfs_args = NULL;
+	struct pkg_config_value *zfs_fs;
+	bool zfs_recursive = false;
 	const char *zfs_prefix = NULL;
 	time_t t = 0;
+	int error, pstat;
+	pid_t pid;
+	char *argv[] = {
+		"zfs",
+		"snapshot",
+		NULL,
+		NULL,
+		NULL,
+	};
 
 	t = time(NULL);
 	tm = localtime(&t);
@@ -105,25 +119,40 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 	/* assert(db != NULL); */ 
 	/* assert(data != NULL); */
 
-	pkg_plugin_conf_string(self, ZFS_FS, &zfs_fs);
-	pkg_plugin_conf_string(self, ZFS_ARGS, &zfs_args);
+	pkg_plugin_conf_bool(self, ZFS_RECURSIVE, &zfs_recursive);
 	pkg_plugin_conf_string(self, ZFS_PREFIX, &zfs_prefix);
 
-	if ((zfs_fs == NULL) || (zfs_prefix == NULL)) {
-		fprintf(stderr, ">>> Configuration options missing, plugin '%s' will not be loaded\n",
-			       PLUGIN_NAME);
-		return (EPKG_FATAL);
+	while (pkg_plugin_conf_list(self, ZFS_FS, &zfs_fs) == EPKG_OK) {
+		snprintf(snap, sizeof(snap), "%s@%s-%d-%d-%d_%d.%d.%d",
+		    pkg_config_value(zfs_fs), zfs_prefix,
+		    1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
+		    tm->tm_hour, tm->tm_min, tm->tm_sec);
+
+		if (zfs_recursive) {
+			argv[2] = "-r";
+			argv[3] = snap;
+		} else {
+			argv[2] = snap;
+			argv[3] = NULL;
+		}
+		printf("Creating ZFS snapshot: %s\n", snap);
+		if ((error = posix_spawn(&pid, "/sbin/zfs", NULL, NULL,
+		    __DECONST(char **, argv), environ)) != 0) {
+			errno = error;
+			warn("Failed to snapshot %s", snap);
+			return (EPKG_FATAL);
+		}
+		while (waitpid(pid, &pstat, 0) == -1) {
+			if (errno != EINTR)
+				return (EPKG_FATAL);
+		}
+
+		if (WEXITSTATUS(pstat) != 0) {
+			warnx("Failed to snapshot %s", snap);
+			return (EPKG_FATAL);
+		}
 	}
 
-	snprintf(cmd_buf, sizeof(cmd_buf), "%s %s %s@%s-%d-%d-%d_%d.%d.%d",
-		 "/sbin/zfs snapshot", zfs_args,
-		 zfs_fs, zfs_prefix,
-		 1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
-		 tm->tm_hour, tm->tm_min, tm->tm_sec);
-
-	printf(">>> Creating ZFS snapshot\n");
-	system(cmd_buf);
-	
 	return (EPKG_OK);
 }
 

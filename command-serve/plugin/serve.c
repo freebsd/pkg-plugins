@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <err.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -109,13 +110,13 @@ plugin_serve_callback(int argc, char **argv)
 		pkg_plugin_conf_string(self, WWW_ROOT, &wwwroot);
 
 	if (wwwroot == NULL) {
-		fprintf(stderr, ">>> You need to specify a directory for serving");
+		warn("You need to specify a directory for serve");
 		return (EX_USAGE);
 	}
 
 	stat(wwwroot, &st);
 	if (S_ISDIR(st.st_mode) == 0) {
-		fprintf(stderr, ">>> '%s' is not a directory\n", wwwroot);
+		warn("'%s' is not a directory\n", wwwroot);
 		return (EX_USAGE);
 	}
 
@@ -128,17 +129,17 @@ plugin_serve_callback(int argc, char **argv)
 
 	ctx = mg_start(NULL, NULL, options);
 
-	printf(">>> Server listening on port %s\n", port);
-	printf(">>> Serving directory %s\n", wwwroot);
-	printf(">>> In order to stop the server press ENTER ...");
+	printf("Server listening on port %s\n", port);
+	printf("Serving directory %s\n", wwwroot);
+	printf("In order to stop the server press ENTER ...");
 	
 	getchar(); /* serve until user pressed enter */
 
-	printf(">>> Shutting down server\n");
+	printf("Shutting down server\n");
 	
 	mg_stop(ctx);
 
-	printf(">>> Done\n");
+	printf("Done\n");
 
 	return (EPKG_OK);
 }

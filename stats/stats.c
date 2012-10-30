@@ -39,9 +39,12 @@ static char version[] = "1.0.0";
 static char description[] = "Plugin for displaying package stats";
 static int plugin_stats_callback(void *data, struct pkgdb *db);
 
+struct pkg_plugin *self;
+
 int
 init(struct pkg_plugin *p)
 {
+	self = p;
 	/*
 	 * Hook into the library and provide package stats for the following actions:
 	 *
@@ -55,21 +58,21 @@ init(struct pkg_plugin *p)
 	pkg_plugin_set(p, PKG_PLUGIN_VERSION, version);
 
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_INSTALL, &plugin_stats_callback) != EPKG_OK) {
-		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
+		pkg_plugin_error(self, "failed to hook into the library");
 		return (EPKG_FATAL);
 	}
 
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_POST_INSTALL, &plugin_stats_callback) != EPKG_OK) {
-		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
+		pkg_plugin_error(self, "failed to hook into the library");
 		return (EPKG_FATAL);
 	}
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_DEINSTALL, &plugin_stats_callback) != EPKG_OK) {
-		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
+		pkg_plugin_error(self, "failed to hook into the library");
 		return (EPKG_FATAL);
 	}
 	
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_POST_DEINSTALL, &plugin_stats_callback) != EPKG_OK) {
-		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
+		pkg_plugin_error(self, "failed to hook into the library");
 		return (EPKG_FATAL);
 	}
 	
@@ -95,7 +98,7 @@ plugin_stats_callback(void *data, struct pkgdb *db)
 
 	flatsize = pkgdb_stats(db, PKG_STATS_LOCAL_SIZE);
 	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
-	printf(">>> Installed packages : %" PRId64 " | Disk space: %s <<<\n",
+	pkg_plugin_info(self, "Installed packages : %" PRId64 " | Disk space: %s <<<\n",
 	       pkgdb_stats(db, PKG_STATS_LOCAL_COUNT),
 	       size);
 

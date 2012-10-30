@@ -73,12 +73,12 @@ init(struct pkg_plugin *p)
 	pkg_plugin_parse(p);
 
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_INSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
-		warnx("Plugin '%s': failed to hook into the library", PLUGIN_NAME);
+		pkg_plugin_error(self, "failed to hook into the library");
 		return (EPKG_FATAL);
 	}
 
 	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_DEINSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
-		warnx("Plugin '%s': failed to hook into the library", PLUGIN_NAME);
+		pkg_plugin_error(self, "failed to hook into the library");
 		return (EPKG_FATAL);
 	}
 
@@ -135,11 +135,11 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 			argv[2] = snap;
 			argv[3] = NULL;
 		}
-		printf("Creating ZFS snapshot: %s\n", snap);
+		pkg_plugin_info(self, "Creating ZFS snapshot: %s", snap);
 		if ((error = posix_spawn(&pid, "/sbin/zfs", NULL, NULL,
 		    __DECONST(char **, argv), environ)) != 0) {
 			errno = error;
-			warn("Failed to snapshot %s", snap);
+			pkg_plugin_errno(self, "Failed to snapshot", snap);
 			return (EPKG_FATAL);
 		}
 		while (waitpid(pid, &pstat, 0) == -1) {
@@ -148,7 +148,7 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 		}
 
 		if (WEXITSTATUS(pstat) != 0) {
-			warnx("Failed to snapshot %s", snap);
+			pkg_plugin_error(self, "Failed to snapshot %s", snap);
 			return (EPKG_FATAL);
 		}
 	}

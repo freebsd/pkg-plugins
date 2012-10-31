@@ -44,7 +44,7 @@ static char plugdesc[] = "A plugin to display package statistics";
 static int plugin_mystats_usage(void);
 
 int
-init(struct pkg_plugin *p)
+pkg_plugin_init(struct pkg_plugin *p)
 {
 	pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
 	pkg_plugin_set(p, PKG_PLUGIN_DESC, plugdesc);
@@ -54,7 +54,7 @@ init(struct pkg_plugin *p)
 }
 
 int
-shutdown(void)
+pkg_plugin_shutdown(void)
 {
 	/* nothing to be done here */
 

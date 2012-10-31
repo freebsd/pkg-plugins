@@ -46,7 +46,7 @@ static char mydesc[] = "A http plugin for serving files";
 #define WWW_PORT 2
 
 int
-init(struct pkg_plugin *p)
+pkg_plugin_init(struct pkg_plugin *p)
 {
 	self = p;
 
@@ -63,7 +63,7 @@ init(struct pkg_plugin *p)
 }
 
 int
-shutdown(struct pkg_plugin *p __unused)
+pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 {
 	/* nothing to be done here */
 

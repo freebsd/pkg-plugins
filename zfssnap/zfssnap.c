@@ -59,7 +59,7 @@ static int plugins_zfssnap_callback(void *data, struct pkgdb *db);
 static int plugins_zfssnap_fd = -1;
 
 int
-init(struct pkg_plugin *p)
+pkg_plugin_init(struct pkg_plugin *p)
 {
 	self = p;
 	pkg_plugin_set(p, PKG_PLUGIN_NAME, PLUGIN_NAME);
@@ -86,10 +86,10 @@ init(struct pkg_plugin *p)
 }
 
 int
-shutdown(struct pkg_plugin *p __unused)
+pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 {
 	close(plugins_zfssnap_fd);
-	
+
 	return (EPKG_OK);
 }
 

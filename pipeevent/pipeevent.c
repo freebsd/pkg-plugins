@@ -361,7 +361,7 @@ pkg_plugin_init(struct pkg_plugin *p)
 	fd[1] = -1;
 
 	pkg_plugin_set(p, PKG_PLUGIN_NAME, "pipeevent");
-	pkg_plugin_set(p, PKG_PLUGIN_DESC, "send events through pipres");
+	pkg_plugin_set(p, PKG_PLUGIN_DESC, "send events through pipes");
 	pkg_plugin_set(p, PKG_PLUGIN_VERSION, "1.0.0");
 
 	pkg_plugin_conf_add_string(p, EVENT_FIFO_PATH, "EVENT_FIFO_PATH", NULL);

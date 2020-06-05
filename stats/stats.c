@@ -35,11 +35,11 @@
 #define PLUGIN_NAME "stats"
 
 static char name[] = "stats";
-static char version[] = "1.0.0";
+static char version[] = "1.1.0";
 static char description[] = "Plugin for displaying package stats";
 static int plugin_stats_callback(void *data, struct pkgdb *db);
 
-struct pkg_plugin *self;
+static struct pkg_plugin *self;
 
 int
 pkg_plugin_init(struct pkg_plugin *p)
@@ -98,7 +98,7 @@ plugin_stats_callback(void *data, struct pkgdb *db)
 
 	flatsize = pkgdb_stats(db, PKG_STATS_LOCAL_SIZE);
 	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
-	pkg_plugin_info(self, "Installed packages : %" PRId64 " | Disk space: %s <<<\n",
+	pkg_plugin_info(self, "Installed packages : %" PRId64 " | Disk space: %s <<<",
 	       pkgdb_stats(db, PKG_STATS_LOCAL_COUNT),
 	       size);
 

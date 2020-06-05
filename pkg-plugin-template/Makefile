@@ -1,18 +1,17 @@
 .include <bsd.own.mk>
 
-LIB=		pkg-plugin-template
-INCS=		template.h
-#WARNS=		6
 PREFIX?=	/usr/local
-LIBDIR=		${PREFIX}/lib
-INCLUDEDIR=	${PREFIX}/include
-SHLIB_MAJOR=	0
+LIBDIR=		${PREFIX}/lib/pkg/
+SHLIB_DIR?=	${LIBDIR}/
+SHLIB_NAME?=	${PLUGIN_NAME}.so
 
+PLUGIN_NAME=	template
 SRCS=		template.c
 
-CFLAGS+=	-std=c99 -fPIC -shared
-CFLAGS+=	-I${INCLUDEDIR}
+PKGFLAGS!=	pkgconf --cflags pkg
+CFLAGS+=	${PKGFLAGS}
 
-DEBUG_FLAGS+=  -g -O0
+beforeinstall:
+	${INSTALL} -d ${LIBDIR}
 
 .include <bsd.lib.mk>

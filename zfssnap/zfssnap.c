@@ -43,20 +43,17 @@
 
 #include <pkg.h>
 
-#define PLUGIN_NAME "zfssnap"
 extern char **environ;
 
-enum {
-	ZFS_FS=1,
-	ZFS_PREFIX,
-	ZFS_RECURSIVE,
-};
+/* Define names of configuration settings */
+static const char PLUGIN_NAME[] = "zfssnap";
+static const char ZFS_DATASETS[] = "ZFS_DATASETS";
+static const char ZFS_PREFIX[] = "ZFS_PREFIX";
+static const char ZFS_RECURSIVE[] = "ZFS_RECURSIVE";
 
-struct pkg_plugin *self;
+static struct pkg_plugin *self;
 
 static int plugins_zfssnap_callback(void *data, struct pkgdb *db);
-
-static int plugins_zfssnap_fd = -1;
 
 int
 pkg_plugin_init(struct pkg_plugin *p)
@@ -64,11 +61,11 @@ pkg_plugin_init(struct pkg_plugin *p)
 	self = p;
 	pkg_plugin_set(p, PKG_PLUGIN_NAME, PLUGIN_NAME);
 	pkg_plugin_set(p, PKG_PLUGIN_DESC, "ZFS snapshot plugin");
-	pkg_plugin_set(p, PKG_PLUGIN_VERSION, "1.0.0");
+	pkg_plugin_set(p, PKG_PLUGIN_VERSION, "2.0.0");
 
-	pkg_plugin_conf_add_list(p, ZFS_FS, "ZFS_FS");
-	pkg_plugin_conf_add_string(p, ZFS_PREFIX, "ZFS_PREFIX", "pkgsnap");
-	pkg_plugin_conf_add_bool(p, ZFS_RECURSIVE, "ZFS_RECURSIVE", false);
+	pkg_plugin_conf_add(p, PKG_ARRAY, ZFS_DATASETS, "");
+	pkg_plugin_conf_add(p, PKG_STRING, ZFS_PREFIX, "pkgsnap");
+	pkg_plugin_conf_add(p, PKG_BOOL, ZFS_RECURSIVE, "false");
 
 	pkg_plugin_parse(p);
 
@@ -88,8 +85,6 @@ pkg_plugin_init(struct pkg_plugin *p)
 int
 pkg_plugin_shutdown(struct pkg_plugin *p __unused)
 {
-	close(plugins_zfssnap_fd);
-
 	return (EPKG_OK);
 }
 
@@ -98,7 +93,8 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 {
 	char snap[MAXPATHLEN];
 	struct tm *tm = NULL;
-	struct pkg_config_value *zfs_fs;
+	const pkg_object *zfs_datasets = NULL;
+	const pkg_object *zfs_dataset = NULL;
 	bool zfs_recursive = false;
 	const char *zfs_prefix = NULL;
 	time_t t = 0;
@@ -111,6 +107,8 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 		NULL,
 		NULL,
 	};
+	pkg_iter it = NULL;
+	const pkg_object *cfg = NULL;
 
 	t = time(NULL);
 	tm = localtime(&t);
@@ -119,12 +117,14 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 	/* assert(db != NULL); */ 
 	/* assert(data != NULL); */
 
-	pkg_plugin_conf_bool(self, ZFS_RECURSIVE, &zfs_recursive);
-	pkg_plugin_conf_string(self, ZFS_PREFIX, &zfs_prefix);
+	cfg = pkg_plugin_conf(self);
+	zfs_recursive = pkg_object_bool(pkg_object_find(cfg, ZFS_RECURSIVE));
+	zfs_prefix = pkg_object_string(pkg_object_find(cfg, ZFS_PREFIX));
+	zfs_datasets = pkg_object_find(cfg, ZFS_DATASETS);
 
-	while (pkg_plugin_conf_list(self, ZFS_FS, &zfs_fs) == EPKG_OK) {
+	while ((zfs_dataset = pkg_object_iterate(zfs_datasets, &it)) != NULL) {
 		snprintf(snap, sizeof(snap), "%s@%s-%d-%d-%d_%d.%d.%d",
-		    pkg_config_value(zfs_fs), zfs_prefix,
+		    pkg_object_string(zfs_dataset), zfs_prefix,
 		    1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
 		    tm->tm_hour, tm->tm_min, tm->tm_sec);
 
@@ -135,7 +135,7 @@ plugins_zfssnap_callback(void *data, struct pkgdb *db)
 			argv[2] = snap;
 			argv[3] = NULL;
 		}
-		pkg_plugin_info(self, "Creating ZFS snapshot: %s", snap);
+		pkg_plugin_info(self, "Creating%s ZFS snapshot: %s", zfs_recursive ? " recursive" : "", snap);
 		if ((error = posix_spawn(&pid, "/sbin/zfs", NULL, NULL,
 		    __DECONST(char **, argv), environ)) != 0) {
 			errno = error;

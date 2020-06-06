@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2020 Markus Stoff
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without

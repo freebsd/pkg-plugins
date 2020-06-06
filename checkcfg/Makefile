@@ -21,6 +21,6 @@ run: ${SHLIB_NAME}
 	${PKG} -C ${PKG_CFG} plugins
 
 test: ${SHLIB_NAME}
-	${PKG} -C ${PKG_CFG} plugins | egrep -q "^checkcfg[[:space:]]+Configuration available: YES[[:space:]]"
+	${PKG} -C ${PKG_CFG} plugins | egrep "^checkcfg[[:space:]]+Configuration available: YES[[:space:]]"
 
 .include <bsd.lib.mk>
